@@ -142,7 +142,14 @@ def main():
  
         if args.dry_run:
             continue
-        folder = Path(args.out_dir) / folder_name
+
+        title = soup.find("h1") or soup
+
+        root_folder_name = slugify(title.get_text())
+
+        root_folder = Path(args.out_dir) / root_folder_name
+
+        folder = root_folder / folder_name
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "english.txt").write_text(eng, encoding="utf-8")
         (folder / "portuguese.txt").write_text(por, encoding="utf-8")
