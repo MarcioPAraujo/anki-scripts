@@ -154,7 +154,7 @@ def main():
         (folder / "english.txt").write_text(eng, encoding="utf-8")
         (folder / "portuguese.txt").write_text(por, encoding="utf-8")
  
-        audio_dest = folder / "audio.mp3"
+        audio_dest = folder / mp3_url.split('/')[-1]
         if audio_dest.exists():
             print("  [skip] audio already downloaded")
         else:
