@@ -81,7 +81,7 @@ def add_card_from_root_folder(folder: Path, deck_name: str, tag: str) -> bool:
 def main():
     parser = argparse.ArgumentParser(description="Add scraped audio cards to Anki via AnkiConnect.")
     parser.add_argument("--cards-dir", required=True, help="Path to the folder containing one subfolder per card")
-    parser.add_argument("--deck", required=True, help="Target Anki deck name (use '::' for subdecks)")
+    parser.add_argument("--deck", default="English", help="Target Anki deck name (use '::' for subdecks)")
     parser.add_argument("--tag", default="", help="Optional tag to add to every imported note")
     args = parser.parse_args()
 
