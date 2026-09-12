@@ -145,7 +145,7 @@ def main():
 
         title = soup.find("h1") or soup
 
-        root_folder_name = slugify(title.get_text())
+        root_folder_name = slugify(title.get_text(), 10)
 
         root_folder = Path(args.out_dir) / root_folder_name
 
