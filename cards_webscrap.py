@@ -98,6 +98,40 @@ def download_mp3(url: str, dest: Path):
     resp.raise_for_status()
     dest.write_bytes(resp.content)
 
+def yes_no_question(question: str) -> bool:
+    answer = input(f"{question} [y/N]: ").strip().lower()
+    return answer in ("yes", "y")
+
+def build_cards_list(english, portuguese, mp3_urls):
+    n = min(len(english), len(portuguese), len(mp3_urls))
+    cards = []
+    
+    for i in range(n):
+        eng, por, mp3_url = english[i], portuguese[i], mp3_urls[i]
+        folder_name = f"{i + 1:02d}-{slugify(eng)}"
+        cards.append({
+            "index": i + 1,
+            "folder": folder_name,
+            "english": eng,
+            "portuguese": por,
+            "mp3_url": mp3_url,
+        })
+    return cards
+
+def write_cards(card: dict, out_dir: Path, soup: BeautifulSoup):
+    folder = out_dir / card["folder"]
+
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "english.txt").write_text(card["english"], encoding="utf-8")
+    (folder / "portuguese.txt").write_text(card["portuguese"], encoding="utf-8")
+
+    audio_dest = folder / card["mp3_url"].split('/')[-1]
+    if audio_dest.exists():
+        print("  [skip] audio already downloaded")
+    else:
+        download_mp3(card["mp3_url"], audio_dest)
+        print("  [ok] audio downloaded")
+
 def main():
     parser = argparse.ArgumentParser(description="Scrape a mairovergara.com post into Anki-ready card folders")
 
@@ -106,6 +140,8 @@ def main():
     parser.add_argument("--out-dir", default="./cards", help="Where to write card folders (default: ./cards)")
 
     parser.add_argument("--dry-run", action="store_true", help="Print extracted pairs without downloading anything")
+
+    parser.add_argument("--yes", action="store_true", help="Skip confirmation of the directories")
 
     args = parser.parse_args()
 
@@ -123,53 +159,51 @@ def main():
     #finding mp3 url files
     mp3_urls = extract_mp3_urls(html)
 
-    print(f"Found: {len(english)} English sentence(s), "
-          f"{len(portuguese)} Portuguese translation(s), "
-          f"{len(mp3_urls)} mp3 file(s).")
+    eng_length = len(english)
+    pt_length = len(portuguese)
+    mp3_length = len(mp3_urls)
+
+    print(f"Found: {eng_length} English sentence(s), "
+          f"{pt_length} Portuguese translation(s), "
+          f"{mp3_length} mp3 file(s).")
+
  
-    counts = {len(english), len(portuguese), len(mp3_urls)}
+    counts = {eng_length, pt_length, mp3_length}
 
     if len(counts) != 1:
         print("WARNING: counts don't match — pairing by position may be wrong for " "the tail end of the list. Inspect with --dry-run before trusting the output.", file=sys.stderr)
 
-    # it's a safe guard to run the loop using the minimun content,
-    # in case a phrase has more than one audio, english text or portuguese text
-    n = min(len(english), len(portuguese), len(mp3_urls))
 
+    cards = build_cards_list(english, portuguese, mp3_urls)
+    cards_length = len(cards)
 
-    for i in range(n):
-        eng, por, mp3_url = english[i], portuguese[i], mp3_urls[i]
-        folder_name = f"{i + 1:02d}-{slugify(eng)}"
-        print(f"\n[{i + 1}/{n}] {folder_name}")
-        print(f"  EN: {eng}")
-        print(f"  PT: {por}")
-        print(f"  MP3: {mp3_url}")
- 
-        if args.dry_run:
-            continue
-
-        title = soup.find("h1") or soup
-
-        root_folder_name = slugify(title.get_text(), 10)
-
-        root_folder = Path(args.out_dir) / root_folder_name
-
-        folder = root_folder / folder_name
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / "english.txt").write_text(eng, encoding="utf-8")
-        (folder / "portuguese.txt").write_text(por, encoding="utf-8")
- 
-        audio_dest = folder / mp3_url.split('/')[-1]
-        if audio_dest.exists():
-            print("  [skip] audio already downloaded")
-        else:
-            download_mp3(mp3_url, audio_dest)
-            print("  [ok] audio downloaded")
+    for card in cards:
+        print(f"\n[{card['index']}]/{cards_length} {card['folder']}")
+        print(f"  EN: {card['english']}")
+        print(f"  PT: {card['portuguese']}")
+        print(f"  MP3: {card['mp3_url']}")
  
     if args.dry_run:
         print("\nDry run complete — nothing was written to disk.")
-    else:
-        print(f"\nDone. {n} card folder(s) written to {args.out_dir}")
+        return
+
+    if not args.yes:
+        print()
+        if not yes_no_question(f"proceed in create {cards_length} folder(s) in {args.out_dir}?"):
+            print("Aborted - nothing was written")
+            return
+
+
+    title = soup.find("h1") or soup
+    
+    root_folder_name = slugify(title.get_text(), 10)
+
+    root_folder = Path(args.out_dir) / root_folder_name
+    for card in cards:
+        print(f"\n[{card['index']}]/{cards_length} {card['folder']}")
+        write_cards(card, root_folder, soup)
+ 
+    print(f"\nDone. {cards_length} card folder(s) written to {args.out_dir}")
  
  
 if __name__ == "__main__":
