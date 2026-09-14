@@ -78,6 +78,36 @@ def add_card_from_root_folder(folder: Path, deck_name: str, tag: str) -> bool:
         print(f"  [fail] {folder.name}: {e}")
         return False
 
+def check_anki_connect(deck: str):
+    try:
+        version = invoke("version")
+        print(f"Connected to AnkiConnect (API version {version}).")
+    except requests.exceptions.ConnectionError:
+        print(
+            "ERROR: could not reach AnkiConnect at "
+            f"{ANKI_CONNECT_URL}. Is Anki running with the AnkiConnect add-on installed?",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        ensure_deck_exists(deck)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def add_cards(cards_dir: Path, deck: str, tag: str):
+    folders = sorted(p for p in cards_dir.iterdir() if p.is_dir())
+    print(f"Found {len(folders)} card folder(s) in {cards_dir}.")
+ 
+    added = 0
+    for folder in folders:
+        if add_card_from_root_folder(folder, deck, tag):
+            added += 1
+ 
+    print(f"\nDone. {added}/{len(folders)} card(s) added.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Add scraped audio cards to Anki via AnkiConnect.")
     parser.add_argument("--cards-dir", required=True, help="Path to the folder containing one subfolder per card")
@@ -91,28 +121,9 @@ def main():
         print(f"ERROR: {cards_dir} is not a directory", file=sys.stderr)
         sys.exit(1)
 
-    try:
-        version = invoke("version")
-        print(f"Connected to AnkiConnect (API version {version}).")
-    except requests.exceptions.ConnectionError:
-        print(
-            "ERROR: could not reach AnkiConnect at "
-            f"{ANKI_CONNECT_URL}. Is Anki running with the AnkiConnect add-on installed?",
-            file=sys.stderr,
-        )
-        sys.exit(1)
- 
-    ensure_deck_exists(args.deck)
+    check_anki_connect(args.deck)
 
-    folders = sorted(p for p in cards_dir.iterdir() if p.is_dir())
-    print(f"Found {len(folders)} card folder(s) in {cards_dir}.")
- 
-    added = 0
-    for folder in folders:
-        if add_card_from_root_folder(folder, args.deck, args.tag):
-            added += 1
- 
-    print(f"\nDone. {added}/{len(folders)} card(s) added.")
+    add_cards(args.cards_dir, args.deck, args.tag)
 
 
 

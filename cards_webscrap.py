@@ -132,22 +132,10 @@ def write_cards(card: dict, out_dir: Path, soup: BeautifulSoup):
         download_mp3(card["mp3_url"], audio_dest)
         print("  [ok] audio downloaded")
 
-def main():
-    parser = argparse.ArgumentParser(description="Scrape a mairovergara.com post into Anki-ready card folders")
-
-    parser.add_argument("url", help="Post url, e.g. https://www.mairovergara.com/strike-off-phrasal-verb-significado/")
-
-    parser.add_argument("--out-dir", default="./cards", help="Where to write card folders (default: ./cards)")
-
-    parser.add_argument("--dry-run", action="store_true", help="Print extracted pairs without downloading anything")
-
-    parser.add_argument("--yes", action="store_true", help="Skip confirmation of the directories")
-
-    args = parser.parse_args()
-
-    print(f"Fetching {args.url} ...")
+def scrap_post(url: str, out_dir: str, dry_run: bool, skip_confirmation: bool) -> Path | None:
+    print(f"Fetching {url} ...")
     #read html page
-    html = fetch_html(args.url)
+    html = fetch_html(url)
     soup = BeautifulSoup(html, "html.parser")
 
     #retrieving the main content
@@ -164,10 +152,10 @@ def main():
     mp3_length = len(mp3_urls)
 
     print(f"Found: {eng_length} English sentence(s), "
-          f"{pt_length} Portuguese translation(s), "
-          f"{mp3_length} mp3 file(s).")
+            f"{pt_length} Portuguese translation(s), "
+            f"{mp3_length} mp3 file(s).")
 
- 
+    
     counts = {eng_length, pt_length, mp3_length}
 
     if len(counts) != 1:
@@ -182,28 +170,45 @@ def main():
         print(f"  EN: {card['english']}")
         print(f"  PT: {card['portuguese']}")
         print(f"  MP3: {card['mp3_url']}")
- 
-    if args.dry_run:
+    
+    if dry_run:
         print("\nDry run complete — nothing was written to disk.")
-        return
+        return None
 
-    if not args.yes:
+    if not skip_confirmation:
         print()
-        if not yes_no_question(f"proceed in create {cards_length} folder(s) in {args.out_dir}?"):
+        if not yes_no_question(f"proceed in create {cards_length} folder(s) in {out_dir}?"):
             print("Aborted - nothing was written")
-            return
+            return None
 
 
     title = soup.find("h1") or soup
     
     root_folder_name = slugify(title.get_text(), 10)
 
-    root_folder = Path(args.out_dir) / root_folder_name
+    root_folder = Path(out_dir) / root_folder_name
     for card in cards:
         print(f"\n[{card['index']}]/{cards_length} {card['folder']}")
         write_cards(card, root_folder, soup)
- 
-    print(f"\nDone. {cards_length} card folder(s) written to {args.out_dir}")
+    
+    print(f"\nDone. {cards_length} card folder(s) written to {out_dir}")
+    return root_folder
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Scrape a mairovergara.com post into Anki-ready card folders")
+
+    parser.add_argument("url", help="Post url, e.g. https://www.mairovergara.com/strike-off-phrasal-verb-significado/")
+
+    parser.add_argument("--out-dir", default="./cards", help="Where to write card folders (default: ./cards)")
+
+    parser.add_argument("--dry-run", action="store_true", help="Print extracted pairs without downloading anything")
+
+    parser.add_argument("--yes", action="store_true", help="Skip confirmation of the directories")
+
+    args = parser.parse_args()
+
+    scrap_post(args.url, args.out_dir, args.dry_run, args.yes)
  
  
 if __name__ == "__main__":
