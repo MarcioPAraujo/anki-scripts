@@ -63,12 +63,14 @@ def extract_text_pairs(content: Tag | BeautifulSoup) -> tuple[list[str], list[st
 
     for p in content.find_all("p"):
 
-        if not p.find('strong'):
+        if p.next_sibling is None:
             continue
+        
+        next_tag = p.next_sibling.next_sibling
 
-        if p.has_attr("class") or p.has_attr("id") or p.has_attr("style"):
+        if not isinstance(next_tag, Tag) or not next_tag.name == "audio":
             continue
-            
+                
         en, pt = extract_eng_pt_parts(p)
         if en and pt:
             english.append(en)
