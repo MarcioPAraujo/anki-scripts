@@ -120,7 +120,7 @@ def build_cards_list(english, portuguese, mp3_urls):
         })
     return cards
 
-def write_cards(card: dict, out_dir: Path, soup: BeautifulSoup):
+def write_cards(card: dict, out_dir: Path):
     folder = out_dir / card["folder"]
 
     folder.mkdir(parents=True, exist_ok=True)
@@ -183,7 +183,6 @@ def scrap_post(url: str, out_dir: str, dry_run: bool, skip_confirmation: bool) -
             print("Aborted - nothing was written")
             return None
 
-
     title = soup.find("h1") or soup
     
     root_folder_name = slugify(title.get_text(), 10)
@@ -191,7 +190,7 @@ def scrap_post(url: str, out_dir: str, dry_run: bool, skip_confirmation: bool) -
     root_folder = Path(out_dir) / root_folder_name
     for card in cards:
         print(f"\n[{card['index']}]/{cards_length} {card['folder']}")
-        write_cards(card, root_folder, soup)
+        write_cards(card, root_folder)
     
     print(f"\nDone. {cards_length} card folder(s) written to {out_dir}")
     return root_folder
@@ -209,8 +208,9 @@ def main():
     parser.add_argument("--yes", action="store_true", help="Skip confirmation of the directories")
 
     args = parser.parse_args()
-
+    
     scrap_post(args.url, args.out_dir, args.dry_run, args.yes)
+
  
  
 if __name__ == "__main__":
